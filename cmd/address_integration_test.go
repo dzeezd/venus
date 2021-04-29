@@ -53,8 +53,6 @@ func TestWalletBalance(t *testing.T) {
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
-	require.NoError(t, err)
 
 	addr, err := n.Wallet().API().WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
@@ -82,11 +80,8 @@ func TestWalletLoadFromFile(t *testing.T) {
 	cs := test.FixtureChainSeed(t)
 	builder.WithGenesisInit(cs.GenesisInitFunc)
 
-	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
+	_, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-
-	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
-	require.NoError(t, err)
 
 	for _, p := range fortest.KeyFilePaths() {
 		cmdClient.RunSuccess(ctx, "wallet", "import", p)
@@ -111,9 +106,6 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 
 	n, cmdClient, done := builder.BuildAndStartAPI(ctx)
 	defer done()
-
-	err := n.Wallet().API().SetPassword(ctx, wallet.TestPassword)
-	require.NoError(t, err)
 
 	addr, err := n.Wallet().API().WalletNewAddress(address.SECP256K1)
 	require.NoError(t, err)
