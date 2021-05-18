@@ -3,6 +3,7 @@ package crypto_test
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,10 +15,10 @@ import (
 func TestKeyInfoMarshal(t *testing.T) {
 	tf.UnitTest(t)
 
-	ki := crypto.KeyInfo{
-		PrivateKey: []byte{1, 2, 3, 4},
-		SigType:    crypto.SigTypeSecp256k1,
+	ki := &crypto.KeyInfo{
+		SigType: crypto.SigTypeSecp256k1,
 	}
+	ki.SetPrivateKey([]byte{1, 2, 3, 4})
 	buf := new(bytes.Buffer)
 	err := ki.MarshalCBOR(buf)
 	assert.NoError(t, err)
@@ -34,11 +35,33 @@ func TestKeyInfoMarshal(t *testing.T) {
 func TestKeyInfoAddress(t *testing.T) {
 	prv, _ := hex.DecodeString("2a2a2a2a2a2a2a2a5fbf0ed0f8364c01ff27540ecd6669ff4cc548cbe60ef5ab")
 	ki := &crypto.KeyInfo{
-		PrivateKey: prv,
-		SigType:    crypto.SigTypeSecp256k1,
+		SigType: crypto.SigTypeSecp256k1,
 	}
-	t.Log(ki.Address())
+	ki.SetPrivateKey(prv)
 
 	sign, _ := crypto.Sign([]byte("hello filecoin"), prv, crypto.SigTypeSecp256k1)
 	t.Logf("%x", sign)
+}
+
+func TestKeyInfoUnmarshalAndMarshal(t *testing.T) {
+	prv := []byte("marshal_and_unmarshal")
+	prv_cp := make([]byte, len(prv))
+	copy(prv_cp, prv)
+	ki := &crypto.KeyInfo{
+		SigType: crypto.SigTypeSecp256k1,
+	}
+	ki.SetPrivateKey(prv)
+
+	assert.NotNil(t, ki.PrivateKey)
+	t.Log(string(prv))
+	assert.Equal(t, prv_cp, ki.Key())
+
+	kiByte, err := json.Marshal(ki)
+	assert.NoError(t, err)
+
+	var newKI crypto.KeyInfo
+	assert.NoError(t, json.Unmarshal(kiByte, &newKI))
+
+	assert.Equal(t, ki.Key(), newKI.Key())
+	assert.Equal(t, ki.SigType, newKI.SigType)
 }

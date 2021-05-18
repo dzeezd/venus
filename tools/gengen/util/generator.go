@@ -640,7 +640,7 @@ func (g *GenesisGenerator) publishDeals(actorAddr, clientAddr address.Address, c
 		if err != nil {
 			return nil, err
 		}
-		sig, err := crypto.Sign(buf.Bytes(), clientkey.PrivateKey, crypto.SigTypeBLS)
+		sig, err := crypto.Sign(buf.Bytes(), clientkey.Key(), crypto.SigTypeBLS)
 		if err != nil {
 			return nil, err
 		}

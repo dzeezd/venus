@@ -27,16 +27,20 @@ func (t *KeyInfo) MarshalCBOR(w io.Writer) error {
 
 	scratch := make([]byte, 9)
 
+	pk, err := t.privateKey()
+	if err != nil {
+		return err
+	}
 	// t.PrivateKey ([]uint8) (slice)
-	if len(t.PrivateKey) > cbg.ByteArrayMaxLen {
+	if len(pk) > cbg.ByteArrayMaxLen {
 		return xerrors.Errorf("Byte array in field t.PrivateKey was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajByteString, uint64(len(t.PrivateKey))); err != nil {
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajByteString, uint64(len(pk))); err != nil {
 		return err
 	}
 
-	if _, err := w.Write(t.PrivateKey[:]); err != nil {
+	if _, err := w.Write(pk[:]); err != nil {
 		return err
 	}
 
@@ -80,12 +84,14 @@ func (t *KeyInfo) UnmarshalCBOR(r io.Reader) error {
 	}
 
 	if extra > 0 {
-		t.PrivateKey = make([]uint8, extra)
+		t.SetPrivateKey(make([]uint8, extra))
 	}
 
-	if _, err := io.ReadFull(br, t.PrivateKey[:]); err != nil {
+	tmpBuf := t.Key()[:]
+	if _, err := io.ReadFull(br, tmpBuf); err != nil {
 		return err
 	}
+	t.SetPrivateKey(tmpBuf)
 	// t.SigType (crypto.SigType) (uint8)
 
 	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)

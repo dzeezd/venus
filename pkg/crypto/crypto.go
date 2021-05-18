@@ -92,10 +92,11 @@ func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 	// the length is guaranteed to be fixed, given the serialization rules for secp2561k curve points.
 	copy(privkey[PrivateKeyBytes-len(blob):], blob)
 
-	return KeyInfo{
-		PrivateKey: privkey,
-		SigType:    SigTypeSecp256k1,
-	}, nil
+	ki := &KeyInfo{
+		SigType: SigTypeSecp256k1,
+	}
+	ki.SetPrivateKey(privkey)
+	return *ki, nil
 }
 
 func NewBLSKeyFromSeed(seed io.Reader) (KeyInfo, error) {
@@ -108,10 +109,11 @@ func NewBLSKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 		return KeyInfo{}, fmt.Errorf("read only %d bytes of %d required from seed", read, len(seedBytes))
 	}
 	k := bls.PrivateKeyGenerateWithSeed(seedBytes)
-	return KeyInfo{
-		PrivateKey: k[:],
-		SigType:    SigTypeBLS,
-	}, nil
+	ki := &KeyInfo{
+		SigType: SigTypeBLS,
+	}
+	ki.SetPrivateKey(k[:])
+	return *ki, nil
 }
 
 // EcRecover recovers the public key from a message, signature pair.

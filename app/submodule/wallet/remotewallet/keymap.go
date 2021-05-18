@@ -21,13 +21,15 @@ func GetKeyType(p address.Protocol) core.KeyType {
 
 func ConvertRemoteKeyInfo(key *crypto.KeyInfo) *core.KeyInfo {
 	return &core.KeyInfo{
-		PrivateKey: key.PrivateKey,
+		PrivateKey: key.Key(),
 		Type:       core.SignType2Key(key.SigType),
 	}
 }
 func ConvertLocalKeyInfo(key *core.KeyInfo) *crypto.KeyInfo {
-	return &crypto.KeyInfo{
-		PrivateKey: key.PrivateKey,
-		SigType:    core.KeyType2Sign(key.Type),
+	ki := &crypto.KeyInfo{
+		SigType: core.KeyType2Sign(key.Type),
 	}
+	ki.SetPrivateKey(key.PrivateKey)
+
+	return ki
 }

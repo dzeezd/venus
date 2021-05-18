@@ -33,10 +33,12 @@ func NewMockSigner(kis []crypto.KeyInfo) MockSigner {
 	ms.AddrKeyInfo = make(map[address.Address]crypto.KeyInfo)
 	for _, k := range kis {
 		// extract public key
-		pub := k.PublicKey()
+		pub, err := k.PublicKey()
+		if err != nil {
+			panic(err)
+		}
 
 		var newAddr address.Address
-		var err error
 		if k.SigType == crypto.SigTypeSecp256k1 {
 			newAddr, err = address.NewSecp256k1Address(pub)
 		} else if k.SigType == crypto.SigTypeBLS {
@@ -136,7 +138,10 @@ func (ms MockSigner) GetAddressForPubKey(pk []byte) (address.Address, error) {
 	var addr address.Address
 
 	for _, ki := range ms.AddrKeyInfo {
-		testPk := ki.PublicKey()
+		testPk, err := ki.PublicKey()
+		if err != nil {
+			return address.Undef, err
+		}
 
 		if bytes.Equal(testPk, pk) {
 			addr, err := ki.Address()

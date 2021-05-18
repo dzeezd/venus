@@ -21,10 +21,8 @@ func TestDSBackendSimple(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), "")
+	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
-
-	_ = fs.SetPassword(TestPassword)
 
 	t.Log("empty address list on empty datastore")
 	assert.Len(t, fs.Addresses(), 0)
@@ -37,7 +35,7 @@ func TestDSBackendSimple(t *testing.T) {
 	assert.True(t, fs.HasAddress(addr))
 
 	t.Log("address is stored in repo, and back when loading fresh in a new backend")
-	fs2, err := NewDSBackend(ds, config.TestPassphraseConfig(), "")
+	fs2, err := NewDSBackend(ds, config.TestPassphraseConfig(), []byte("test-password"))
 	assert.NoError(t, err)
 
 	assert.True(t, fs2.HasAddress(addr))
@@ -51,7 +49,7 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), "")
+	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	err = fs.SetPassword(TestPassword)
@@ -83,7 +81,7 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	defer func() {
 		require.NoError(t, ds1.Close())
 	}()
-	fs1, err := NewDSBackend(ds1, config.TestPassphraseConfig(), "")
+	fs1, err := NewDSBackend(ds1, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	err = fs1.SetPassword(TestPassword)
@@ -93,7 +91,7 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	defer func() {
 		require.NoError(t, ds2.Close())
 	}()
-	fs2, err := NewDSBackend(ds2, config.TestPassphraseConfig(), "")
+	fs2, err := NewDSBackend(ds2, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	err = fs2.SetPassword(TestPassword)
@@ -128,7 +126,7 @@ func TestDSBackendParallel(t *testing.T) {
 		require.NoError(t, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), "")
+	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
 	err = fs.SetPassword(TestPassword)

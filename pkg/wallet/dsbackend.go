@@ -2,7 +2,6 @@ package wallet
 
 import (
 	"crypto/rand"
-	"encoding/json"
 	"reflect"
 	"strings"
 	"sync"
@@ -45,7 +44,7 @@ type DSBackend struct {
 	PassphraseConf config.PassphraseConfig
 
 	password *memguard.Enclave
-	unLocked map[address.Address]*memguard.Enclave
+	unLocked map[address.Address]*crypto.KeyInfo
 
 	state int
 }
@@ -53,7 +52,7 @@ type DSBackend struct {
 var _ Backend = (*DSBackend)(nil)
 
 // NewDSBackend constructs a new backend using the passed in datastore.
-func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, password string) (*DSBackend, error) {
+func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, password []byte) (*DSBackend, error) {
 	result, err := ds.Query(dsq.Query{
 		KeysOnly: true,
 	})
@@ -79,14 +78,13 @@ func NewDSBackend(ds repo.Datastore, passphraseCfg config.PassphraseConfig, pass
 		ds:             ds,
 		cache:          addrCache,
 		PassphraseConf: passphraseCfg,
-		unLocked:       make(map[address.Address]*memguard.Enclave),
+		unLocked:       make(map[address.Address]*crypto.KeyInfo, len(addrCache)),
 	}
-	// Safely terminate in case of an interrupt signal
-	memguard.CatchInterrupt()
 
 	if len(password) != 0 {
-		backend.setPassword(password)
-		backend.state = Unlock
+		if err := backend.SetPassword(password); err != nil {
+			return nil, err
+		}
 	}
 
 	return backend, nil
@@ -169,6 +167,11 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 	}
 
 	pwd, err := backend.getPassword()
+	defer func() {
+		for i := range pwd {
+			pwd[i] = 0
+		}
+	}()
 	if err != nil {
 		return err
 	}
@@ -182,21 +185,21 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 		return errors.Wrapf(err, "failed to store new address: %s", key.Address.String())
 	}
 	backend.cache[addr] = struct{}{}
+	backend.unLocked[addr] = ki
 	backend.lk.Unlock()
 
-	return backend.addKeyInfoToCache(addr, ki)
+	return nil
 }
 
 // SignBytes cryptographically signs `data` using the private key `priv`.
 func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (*crypto.Signature, error) {
-	ki, found, err := backend.keyInfoFromCache(addr)
-	if err != nil {
-		return nil, err
-	}
+	backend.lk.Lock()
+	ki, found := backend.unLocked[addr]
+	backend.lk.Unlock()
 	if !found {
 		return nil, errors.Errorf("%s is locked", addr.String())
 	}
-	return crypto.Sign(data, ki.PrivateKey, ki.SigType)
+	return crypto.Sign(data, ki.Key(), ki.SigType)
 }
 
 // GetKeyInfo will return the private & public keys associated with address `addr`
@@ -207,6 +210,11 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 	}
 
 	pwd, err := backend.getPassword()
+	defer func() {
+		for i := range pwd {
+			pwd[i] = 0
+		}
+	}()
 	if err != nil {
 		return nil, err
 	}
@@ -219,6 +227,11 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 }
 
 func (backend *DSBackend) GetKeyInfoPassphrase(addr address.Address, password []byte) (*crypto.KeyInfo, error) {
+	defer func() {
+		for i := range password {
+			password[i] = 0
+		}
+	}()
 	if !backend.HasAddress(addr) {
 		return nil, errors.New("backend does not contain address")
 	}
@@ -240,7 +253,12 @@ func (backend *DSBackend) getKey(addr address.Address, password []byte) (*Key, e
 	return decryptKey(b, password)
 }
 
-func (backend *DSBackend) LockWallet() error {
+func (backend *DSBackend) LockWallet(password []byte) error {
+	defer func() {
+		for i := range password {
+			password[i] = 0
+		}
+	}()
 	if backend.state == Lock {
 		return xerrors.Errorf("already locked")
 	}
@@ -260,7 +278,12 @@ func (backend *DSBackend) LockWallet() error {
 	return nil
 }
 
-func (backend *DSBackend) UnLockWallet(password string) error {
+func (backend *DSBackend) UnLockWallet(password []byte) error {
+	defer func() {
+		for i := range password {
+			password[i] = 0
+		}
+	}()
 	if backend.state == Unlock {
 		return xerrors.Errorf("already unlocked")
 	}
@@ -270,33 +293,33 @@ func (backend *DSBackend) UnLockWallet(password string) error {
 	}
 
 	for _, addr := range backend.Addresses() {
-		ki, err := backend.GetKeyInfoPassphrase(addr, []byte(password))
+		ki, err := backend.GetKeyInfoPassphrase(addr, password)
 		if err != nil {
 			return err
 		}
 
-		if err := backend.addKeyInfoToCache(addr, ki); err != nil {
-			return err
-		}
+		backend.lk.Lock()
+		backend.unLocked[addr] = ki
+		backend.lk.Unlock()
 	}
 	backend.state = Unlock
 
 	return nil
 }
 
-func (backend *DSBackend) SetPassword(password string) error {
+func (backend *DSBackend) SetPassword(password []byte) error {
 	if backend.password != nil {
 		return ErrRepeatPassword
 	}
 
 	for _, addr := range backend.Addresses() {
-		ki, err := backend.GetKeyInfoPassphrase(addr, []byte(password))
+		ki, err := backend.GetKeyInfoPassphrase(addr, password)
 		if err != nil {
 			return err
 		}
-		if err := backend.addKeyInfoToCache(addr, ki); err != nil {
-			return err
-		}
+		backend.lk.Lock()
+		backend.unLocked[addr] = ki
+		backend.lk.Unlock()
 	}
 	if backend.state == undetermined {
 		backend.state = Unlock
@@ -315,11 +338,11 @@ func (backend *DSBackend) WalletState() int {
 	return backend.state
 }
 
-func (backend *DSBackend) setPassword(password string) {
+func (backend *DSBackend) setPassword(password []byte) {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 
-	backend.password = memguard.NewEnclave([]byte(password))
+	backend.password = memguard.NewEnclave(password)
 }
 
 func (backend *DSBackend) getPassword() ([]byte, error) {
@@ -354,42 +377,4 @@ func (backend *DSBackend) cleanPassword() {
 	backend.lk.Lock()
 	defer backend.lk.Unlock()
 	backend.password = nil
-}
-
-func (backend *DSBackend) addKeyInfoToCache(addr address.Address, ki *crypto.KeyInfo) error {
-	backend.lk.Lock()
-	defer backend.lk.Unlock()
-	if _, ok := backend.unLocked[addr]; ok {
-		return nil
-	}
-
-	kiByte, err := json.Marshal(ki)
-	if err != nil {
-		return err
-	}
-	backend.unLocked[addr] = memguard.NewEnclave(kiByte)
-
-	return nil
-}
-
-func (backend *DSBackend) keyInfoFromCache(addr address.Address) (*crypto.KeyInfo, bool, error) {
-	backend.lk.Lock()
-	defer backend.lk.Unlock()
-	e, ok := backend.unLocked[addr]
-	if !ok {
-		return nil, ok, nil
-	}
-	buf, err := e.Open()
-	if err != nil {
-		return nil, ok, err
-	}
-	defer buf.Destroy()
-
-	var ki crypto.KeyInfo
-	err = json.Unmarshal(buf.Bytes(), &ki)
-	if err != nil {
-		return nil, ok, err
-	}
-
-	return &ki, ok, nil
 }

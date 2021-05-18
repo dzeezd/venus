@@ -49,7 +49,7 @@ type Builder struct {
 	isRelay        bool
 	chainClock     clock.ChainEpochClock
 	genCid         cid.Cid
-	walletPassword string
+	walletPassword []byte
 	authURL        string
 }
 
@@ -89,7 +89,7 @@ func PropagationDelay(propDelay time.Duration) BuilderOpt {
 }
 
 // SetWalletPassword set wallet password
-func SetWalletPassword(password string) BuilderOpt {
+func SetWalletPassword(password []byte) BuilderOpt {
 	return func(c *Builder) error {
 		c.walletPassword = password
 		return nil

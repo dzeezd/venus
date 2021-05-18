@@ -119,7 +119,7 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 	resultAddr := strings.Split(result[1], " ")[0]
 	require.Equal(t, addr.String(), resultAddr)
 
-	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", resultAddr, wallet.TestPassword).ReadStdoutTrimNewlines()
+	exportJSON := cmdClient.RunSuccess(ctx, "wallet", "export", resultAddr, string(wallet.TestPassword)).ReadStdoutTrimNewlines()
 	data, err := hex.DecodeString(exportJSON)
 	require.NoError(t, err)
 	var exportResult crypto.KeyInfo
@@ -132,9 +132,9 @@ func TestWalletExportImportRoundTrip(t *testing.T) {
 		require.NoError(t, os.Remove("walletFileTest"))
 	}()
 
-	keyInfo, err := json.Marshal(exportResult)
+	keyInfoByte, err := json.Marshal(exportResult)
 	require.NoError(t, err)
-	_, err = wf.WriteString(hex.EncodeToString(keyInfo))
+	_, err = wf.WriteString(hex.EncodeToString(keyInfoByte))
 	require.NoError(t, err)
 	require.NoError(t, wf.Close())
 
