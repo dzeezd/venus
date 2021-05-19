@@ -22,9 +22,6 @@ func newWalletAndDSBackend(t *testing.T) (*Wallet, *DSBackend) {
 	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
-	err = fs.SetPassword(TestPassword)
-	assert.NoError(t, err)
-
 	t.Log("create a wallet with a single backend")
 	w := New(fs)
 

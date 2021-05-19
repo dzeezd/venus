@@ -52,9 +52,6 @@ func TestDSBackendKeyPairMatchAddress(t *testing.T) {
 	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
-	err = fs.SetPassword(TestPassword)
-	assert.NoError(t, err)
-
 	t.Log("can create new address")
 	addr, err := fs.NewAddress(address.SECP256K1)
 	assert.NoError(t, err)
@@ -84,17 +81,11 @@ func TestDSBackendErrorsForUnknownAddress(t *testing.T) {
 	fs1, err := NewDSBackend(ds1, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(t, err)
 
-	err = fs1.SetPassword(TestPassword)
-	assert.NoError(t, err)
-
 	ds2 := datastore.NewMapDatastore()
 	defer func() {
 		require.NoError(t, ds2.Close())
 	}()
 	fs2, err := NewDSBackend(ds2, config.TestPassphraseConfig(), TestPassword)
-	assert.NoError(t, err)
-
-	err = fs2.SetPassword(TestPassword)
 	assert.NoError(t, err)
 
 	t.Log("can create new address in fs1")
@@ -127,9 +118,6 @@ func TestDSBackendParallel(t *testing.T) {
 	}()
 
 	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
-	assert.NoError(t, err)
-
-	err = fs.SetPassword(TestPassword)
 	assert.NoError(t, err)
 
 	var wg sync.WaitGroup

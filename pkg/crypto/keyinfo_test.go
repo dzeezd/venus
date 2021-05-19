@@ -45,8 +45,8 @@ func TestKeyInfoAddress(t *testing.T) {
 
 func TestKeyInfoUnmarshalAndMarshal(t *testing.T) {
 	prv := []byte("marshal_and_unmarshal")
-	prv_cp := make([]byte, len(prv))
-	copy(prv_cp, prv)
+	prvCp := make([]byte, len(prv))
+	copy(prvCp, prv)
 	ki := &crypto.KeyInfo{
 		SigType: crypto.SigTypeSecp256k1,
 	}
@@ -54,7 +54,7 @@ func TestKeyInfoUnmarshalAndMarshal(t *testing.T) {
 
 	assert.NotNil(t, ki.PrivateKey)
 	t.Log(string(prv))
-	assert.Equal(t, prv_cp, ki.Key())
+	assert.Equal(t, prvCp, ki.Key())
 
 	kiByte, err := json.Marshal(ki)
 	assert.NoError(t, err)

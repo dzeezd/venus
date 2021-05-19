@@ -121,11 +121,14 @@ func (ki *KeyInfo) Equals(other *KeyInfo) bool {
 	if err != nil {
 		return false
 	}
+	defer pk.Destroy()
 
 	otherPK, err := other.PrivateKey.Open()
 	if err != nil {
 		return false
 	}
+	defer otherPK.Destroy()
+
 	return bytes.Equal(pk.Bytes(), otherPK.Bytes())
 }
 

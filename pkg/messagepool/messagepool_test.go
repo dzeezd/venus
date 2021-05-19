@@ -334,11 +334,7 @@ func newWallet(t *testing.T) *wallet.Wallet {
 	backend, err := wallet.NewDSBackend(r.WalletDatastore(), r.Config().Wallet.PassphraseConfig, wallet.TestPassword)
 	assert.NoError(t, err)
 
-	w := wallet.New(backend)
-	err = w.SetPassword(wallet.TestPassword)
-	assert.NoError(t, err)
-
-	return w
+	return wallet.New(backend)
 }
 
 func TestMessagePool(t *testing.T) {
