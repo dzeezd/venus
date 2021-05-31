@@ -5,6 +5,7 @@ import (
 	"crypto/elliptic"
 	"fmt"
 	"io"
+	"math/big"
 
 	secp256k1 "github.com/ipsn/go-secp256k1"
 
@@ -85,17 +86,20 @@ func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 	if err != nil {
 		return KeyInfo{}, err
 	}
+	defer func() {
+		key.D.Set(big.NewInt(0))
+	}()
 
-	privkey := make([]byte, PrivateKeyBytes)
-	blob := key.D.Bytes()
+	//privkey := make([]byte, PrivateKeyBytes)
+	//blob := key.D.Bytes()
 
 	// the length is guaranteed to be fixed, given the serialization rules for secp2561k curve points.
-	copy(privkey[PrivateKeyBytes-len(blob):], blob)
+	//copy(privkey[PrivateKeyBytes-len(blob):], blob)
 
 	ki := &KeyInfo{
 		SigType: SigTypeSecp256k1,
 	}
-	ki.SetPrivateKey(privkey)
+	ki.SetPrivateKey(key.D.Bytes())
 	return *ki, nil
 }
 

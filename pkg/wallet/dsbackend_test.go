@@ -1,8 +1,12 @@
 package wallet
 
 import (
+	"crypto/rand"
+	"io"
 	"sync"
 	"testing"
+
+	"github.com/filecoin-project/venus/pkg/crypto"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-datastore"
@@ -133,4 +137,33 @@ func TestDSBackendParallel(t *testing.T) {
 
 	wg.Wait()
 	assert.Len(t, fs.Addresses(), 10)
+}
+
+func BenchmarkDSBackendSimple(b *testing.B) {
+	ds := datastore.NewMapDatastore()
+	defer func() {
+		require.NoError(b, ds.Close())
+	}()
+
+	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), TestPassword)
+	assert.NoError(b, err)
+
+	corruptData := make([]byte, 32)
+	for i := 0; i < b.N; i++ {
+		addr, err := fs.NewAddress(address.SECP256K1)
+		assert.NoError(b, err)
+
+		data := make([]byte, 32)
+		_, err = io.ReadFull(rand.Reader, data)
+		assert.NoError(b, err)
+		copy(corruptData, data)
+
+		signature, err := fs.SignBytes(data, addr)
+		if err != nil {
+			b.Log(len(signature.Data), signature)
+		}
+		assert.NoError(b, err)
+
+		assert.NoError(b, crypto.ValidateSignature(corruptData, addr, *signature))
+	}
 }

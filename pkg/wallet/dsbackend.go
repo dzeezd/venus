@@ -166,16 +166,12 @@ func (backend *DSBackend) putKeyInfo(ki *crypto.KeyInfo) error {
 		KeyInfo: ki,
 	}
 
-	pwd, err := backend.getPassword()
-	defer func() {
-		for i := range pwd {
-			pwd[i] = 0
-		}
-	}()
-	if err != nil {
+	var keyJSON []byte
+	err = backend.UsePassword(func(password []byte) error {
+		var err error
+		keyJSON, err = encryptKey(key, password, backend.PassphraseConf.ScryptN, backend.PassphraseConf.ScryptP)
 		return err
-	}
-	keyJSON, err := encryptKey(key, pwd, backend.PassphraseConf.ScryptN, backend.PassphraseConf.ScryptP)
+	})
 	if err != nil {
 		return err
 	}
@@ -199,7 +195,14 @@ func (backend *DSBackend) SignBytes(data []byte, addr address.Address) (*crypto.
 	if !found {
 		return nil, errors.Errorf("%s is locked", addr.String())
 	}
-	return crypto.Sign(data, ki.Key(), ki.SigType)
+
+	var signature *crypto.Signature
+	err := ki.UsePrivateKey(func(privateKey []byte) error {
+		var err error
+		signature, err = crypto.Sign(data, privateKey, ki.SigType)
+		return err
+	})
+	return signature, err
 }
 
 // GetKeyInfo will return the private & public keys associated with address `addr`
@@ -209,16 +212,13 @@ func (backend *DSBackend) GetKeyInfo(addr address.Address) (*crypto.KeyInfo, err
 		return nil, errors.New("backend does not contain address")
 	}
 
-	pwd, err := backend.getPassword()
-	defer func() {
-		for i := range pwd {
-			pwd[i] = 0
-		}
-	}()
-	if err != nil {
-		return nil, err
-	}
-	key, err := backend.getKey(addr, pwd)
+	var key *Key
+	err := backend.UsePassword(func(password []byte) error {
+		var err error
+		key, err = backend.getKey(addr, password)
+
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -345,18 +345,17 @@ func (backend *DSBackend) setPassword(password []byte) {
 	backend.password = memguard.NewEnclave(password)
 }
 
-func (backend *DSBackend) getPassword() ([]byte, error) {
+func (backend *DSBackend) UsePassword(f func(password []byte) error) error {
 	if backend.password == nil {
-		return []byte{}, nil
+		return f([]byte{})
 	}
 	buf, err := backend.password.Open()
 	if err != nil {
-		return []byte{}, err
+		return err
 	}
 	defer buf.Destroy()
-	pwd := make([]byte, buf.Size())
-	copy(pwd, buf.Bytes())
-	return pwd, nil
+
+	return f(buf.Bytes())
 }
 
 func (backend *DSBackend) verifyPassword(password string) bool {

@@ -125,7 +125,14 @@ func (ms MockSigner) SignBytes(_ context.Context, data []byte, addr address.Addr
 	if !ok {
 		return nil, errors.New("unknown address")
 	}
-	return crypto.Sign(data, ki.Key(), ki.SigType)
+	var sig *crypto.Signature
+	err := ki.UsePrivateKey(func(privateKey []byte) error {
+		var err error
+		sig, err = crypto.Sign(data, privateKey, ki.SigType)
+
+		return err
+	})
+	return sig, err
 }
 
 // HasAddress returns whether the signer can sign with this address
