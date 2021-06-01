@@ -90,16 +90,15 @@ func NewSecpKeyFromSeed(seed io.Reader) (KeyInfo, error) {
 		key.D.Set(big.NewInt(0))
 	}()
 
-	//privkey := make([]byte, PrivateKeyBytes)
-	//blob := key.D.Bytes()
+	privkey := make([]byte, PrivateKeyBytes)
 
 	// the length is guaranteed to be fixed, given the serialization rules for secp2561k curve points.
-	//copy(privkey[PrivateKeyBytes-len(blob):], blob)
+	copy(privkey[PrivateKeyBytes-len(key.D.Bytes()):], key.D.Bytes())
 
 	ki := &KeyInfo{
 		SigType: SigTypeSecp256k1,
 	}
-	ki.SetPrivateKey(key.D.Bytes())
+	ki.SetPrivateKey(privkey)
 	return *ki, nil
 }
 

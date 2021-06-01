@@ -392,7 +392,7 @@ var unlockedCmd = &cmds.Command{
 
 		pw := req.Arguments[0]
 
-		err := env.(*node.Env).WalletAPI.UnLockWallet(req.Context, pw)
+		err := env.(*node.Env).WalletAPI.UnLockWallet(req.Context, []byte(pw))
 		if err != nil {
 			return err
 		}

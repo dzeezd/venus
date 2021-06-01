@@ -25,7 +25,7 @@ import (
 
 func requireSignerAddr(t *testing.T) (*DSBackend, address.Address) {
 	ds := datastore.NewMapDatastore()
-	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), TestPassword)
+	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	require.NoError(t, err)
 
 	addr, err := fs.NewAddress(address.SECP256K1)

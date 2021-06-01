@@ -145,7 +145,7 @@ func BenchmarkDSBackendSimple(b *testing.B) {
 		require.NoError(b, ds.Close())
 	}()
 
-	fs, err := NewDSBackend(ds, config.DefaultPassphraseConfig(), TestPassword)
+	fs, err := NewDSBackend(ds, config.TestPassphraseConfig(), TestPassword)
 	assert.NoError(b, err)
 
 	corruptData := make([]byte, 32)

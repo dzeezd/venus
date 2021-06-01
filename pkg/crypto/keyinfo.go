@@ -96,7 +96,7 @@ func (ki KeyInfo) MarshalJSON() ([]byte, error) {
 }
 
 // Key returns the private key of KeyInfo
-// This method makes the key escape from memguard's protection, so only use in test
+// This method makes the key escape from memguard's protection, so use caution
 func (ki *KeyInfo) Key() []byte {
 	var pk []byte
 	err := ki.UsePrivateKey(func(privateKey []byte) error {

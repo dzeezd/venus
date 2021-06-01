@@ -253,12 +253,7 @@ func (backend *DSBackend) getKey(addr address.Address, password []byte) (*Key, e
 	return decryptKey(b, password)
 }
 
-func (backend *DSBackend) LockWallet(password []byte) error {
-	defer func() {
-		for i := range password {
-			password[i] = 0
-		}
-	}()
+func (backend *DSBackend) LockWallet() error {
 	if backend.state == Lock {
 		return xerrors.Errorf("already locked")
 	}
@@ -356,20 +351,6 @@ func (backend *DSBackend) UsePassword(f func(password []byte) error) error {
 	defer buf.Destroy()
 
 	return f(buf.Bytes())
-}
-
-func (backend *DSBackend) verifyPassword(password string) bool {
-	if backend.password == nil {
-		return true
-	}
-	buf, err := backend.password.Open()
-	if err != nil {
-		walletLog.Errorf("expected decryption error %v", err)
-		return false
-	}
-	defer buf.Destroy()
-
-	return buf.String() == password
 }
 
 func (backend *DSBackend) cleanPassword() {
