@@ -7,16 +7,16 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
-	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
-
 	"github.com/filecoin-project/venus/pkg/specactors/adt"
+
+	paych5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/paych"
+	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
 )
 
-var _ State = (*state0)(nil)
+var _ State = (*state5)(nil)
 
-func load0(store adt.Store, root cid.Cid) (State, error) {
-	out := state0{store: store}
+func load5(store adt.Store, root cid.Cid) (State, error) {
+	out := state5{store: store}
 	err := store.Get(store.Context(), root, &out)
 	if err != nil {
 		return nil, err
@@ -24,39 +24,39 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-type state0 struct {
-	paych0.State
+type state5 struct {
+	paych5.State
 	store adt.Store
-	lsAmt *adt0.Array
+	lsAmt *adt5.Array
 }
 
 // Channel owner, who has funded the actor
-func (s *state0) From() (address.Address, error) {
+func (s *state5) From() (address.Address, error) {
 	return s.State.From, nil
 }
 
 // Recipient of payouts from channel
-func (s *state0) To() (address.Address, error) {
+func (s *state5) To() (address.Address, error) {
 	return s.State.To, nil
 }
 
 // Height at which the channel can be `Collected`
-func (s *state0) SettlingAt() (abi.ChainEpoch, error) {
+func (s *state5) SettlingAt() (abi.ChainEpoch, error) {
 	return s.State.SettlingAt, nil
 }
 
 // Amount successfully redeemed through the payment channel, paid out on `Collect()`
-func (s *state0) ToSend() (abi.TokenAmount, error) {
+func (s *state5) ToSend() (abi.TokenAmount, error) {
 	return s.State.ToSend, nil
 }
 
-func (s *state0) getOrLoadLsAmt() (*adt0.Array, error) {
+func (s *state5) getOrLoadLsAmt() (*adt5.Array, error) {
 	if s.lsAmt != nil {
 		return s.lsAmt, nil
 	}
 
 	// Get the lane state from the chain
-	lsamt, err := adt0.AsArray(s.store, s.State.LaneStates)
+	lsamt, err := adt5.AsArray(s.store, s.State.LaneStates, paych5.LaneStatesAmtBitwidth)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (s *state0) getOrLoadLsAmt() (*adt0.Array, error) {
 }
 
 // Get total number of lanes
-func (s *state0) LaneCount() (uint64, error) {
+func (s *state5) LaneCount() (uint64, error) {
 	lsamt, err := s.getOrLoadLsAmt()
 	if err != nil {
 		return 0, err
@@ -75,7 +75,7 @@ func (s *state0) LaneCount() (uint64, error) {
 }
 
 // Iterate lane states
-func (s *state0) ForEachLaneState(cb func(idx uint64, dl LaneState) error) error {
+func (s *state5) ForEachLaneState(cb func(idx uint64, dl LaneState) error) error {
 	// Get the lane state from the chain
 	lsamt, err := s.getOrLoadLsAmt()
 	if err != nil {
@@ -85,20 +85,20 @@ func (s *state0) ForEachLaneState(cb func(idx uint64, dl LaneState) error) error
 	// Note: we use a map instead of an array to store laneStates because the
 	// client sets the lane ID (the index) and potentially they could use a
 	// very large index.
-	var ls paych0.LaneState
+	var ls paych5.LaneState
 	return lsamt.ForEach(&ls, func(i int64) error {
-		return cb(uint64(i), &laneState0{ls})
+		return cb(uint64(i), &laneState5{ls})
 	})
 }
 
-type laneState0 struct {
-	paych0.LaneState
+type laneState5 struct {
+	paych5.LaneState
 }
 
-func (ls *laneState0) Redeemed() (big.Int, error) {
+func (ls *laneState5) Redeemed() (big.Int, error) {
 	return ls.LaneState.Redeemed, nil
 }
 
-func (ls *laneState0) Nonce() (uint64, error) {
+func (ls *laneState5) Nonce() (uint64, error) {
 	return ls.LaneState.Nonce, nil
 }
